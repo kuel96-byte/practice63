@@ -1,0 +1,15 @@
+# /etc/netplan/10-lab-dmz.yaml — lab-dmz-srv (статический адрес в DMZ)
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    dmz:
+      match: {macaddress: "08:00:27:aa:02:01"}
+      addresses: [172.16.20.10/24]
+      routes:
+        - to: default
+          via: 172.16.20.1
+      # Публичные резолверы: из DMZ разрешён только DNS «наружу», к gw — нет.
+      nameservers:
+        addresses: [1.1.1.1, 8.8.8.8]
+      link-local: []

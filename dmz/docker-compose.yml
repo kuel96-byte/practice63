@@ -1,0 +1,10 @@
+# /opt/dmz-web/docker-compose.yml — lab-dmz-srv
+services:
+  web:
+    image: nginx:stable-alpine
+    container_name: dmz-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./html:/usr/share/nginx/html:ro

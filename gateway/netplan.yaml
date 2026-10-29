@@ -1,0 +1,27 @@
+# /etc/netplan/10-lab-gw.yaml — lab-gw
+# Интерфейсы находятся по MAC (заданы в scripts/clone-vms.sh) и получают
+# понятные имена: wan0 / ext0 / lan0 / dmz0 — на них опирается nftables.conf.
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    wan0:                       # nic1: VirtualBox NAT — выход в интернет
+      match: {macaddress: "08:00:27:aa:01:01"}
+      set-name: wan0
+      dhcp4: true
+      link-local: []
+    ext0:                       # nic2: host-only — «внешний» IP для DNAT
+      match: {macaddress: "08:00:27:aa:01:02"}
+      set-name: ext0
+      addresses: [192.168.56.10/24]
+      link-local: []
+    lan0:                       # nic3: intnet lan
+      match: {macaddress: "08:00:27:aa:01:03"}
+      set-name: lan0
+      addresses: [192.168.10.1/24]
+      link-local: []
+    dmz0:                       # nic4: intnet dmz
+      match: {macaddress: "08:00:27:aa:01:04"}
+      set-name: dmz0
+      addresses: [172.16.20.1/24]
+      link-local: []

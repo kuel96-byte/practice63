@@ -1,0 +1,50 @@
+#cloud-config
+# Шаблон autoinstall (subiquity, Ubuntu Live Server) для
+# `VBoxManage unattended install --script-template`.
+# Плейсхолдеры VBOX_INSERT_* подставляет VirtualBox, ключ лабы — scripts/create-vms.sh.
+autoinstall:
+  version: 1
+  locale: @@VBOX_INSERT_LOCALE@@
+  keyboard:
+    layout: us
+  refresh-installer:
+    update: false
+  apt:
+    geoip: false
+    fallback: offline-install
+  # poweroff, а не reboot: скрипт ждёт выключения и извлекает ISO
+  shutdown: poweroff
+  storage:
+    layout:
+      name: direct
+    swap:
+      size: 0
+  identity:
+    hostname: '@@VBOX_INSERT_HOSTNAME_WITHOUT_DOMAIN@@'
+    username: '@@VBOX_INSERT_USER_LOGIN@@'
+    realname: '@@VBOX_INSERT_USER_FULL_NAME@@'
+    password: '@@VBOX_INSERT_USER_PASSWORD_SHACRYPT512@@'
+  ssh:
+    install-server: true
+    allow-pw: true
+    authorized-keys:
+      - '__LAB_PUBKEY__'
+  packages:
+    - curl
+    - netcat-openbsd
+    - nftables
+    - tcpdump
+    - python3
+  updates: security
+  user-data:
+    timezone: Etc/UTC
+  late-commands:
+    # sudo без пароля для автоматизации (учебное послабление)
+    - echo 'student ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/90-lab-student
+    - chmod 440 /target/etc/sudoers.d/90-lab-student
+    # фоновый apt не должен мешать скриптам настройки
+    - curtin in-target --target=/target -- systemctl disable apt-daily.timer apt-daily-upgrade.timer
+    - curtin in-target --target=/target -- systemctl mask unattended-upgrades.service
+    # быстрый текстовый GRUB
+    - sed -i -e 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=1/' -e 's/^GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/' /target/etc/default/grub
+    - curtin in-target --target=/target -- update-grub

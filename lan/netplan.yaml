@@ -1,0 +1,11 @@
+# /etc/netplan/10-lab-lan.yaml — клиенты LAN (lab-pc1, lab-pc2, lab-pc3): DHCP от gw
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    lan:
+      match: {name: "en*"}
+      dhcp4: true
+      # client-id по MAC: у linked clones гарантированно разные аренды
+      dhcp-identifier: mac
+      link-local: []
