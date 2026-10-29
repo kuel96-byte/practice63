@@ -1,0 +1,101 @@
+
+=================== прогон 1 ===================
+  pc1=192.168.10.189  pc2=192.168.10.138
+--- gw: сервисы и ядро
+  gw: nftables.service enabled+active                            ожидалось OK    получено OK    PASS
+  gw: ruleset загружен (policy drop, лог nft-drop:)   ожидалось OK    получено OK    PASS
+  gw: ip_forward=1 (sysctl.d)                                    ожидалось OK    получено OK    PASS
+  gw: rp_filter strict на всех интерфейсах      ожидалось OK    получено OK    PASS
+  gw: DHCP (dnsmasq) слушает только lan0            ожидалось OK    получено OK    PASS
+--- LAN: DHCP, интернет, DNS
+  pc1: адрес по DHCP из пула .100-.200              ожидалось OK    получено OK    PASS
+  pc1: шлюз и DNS получены по DHCP (192.168.10.1) ожидалось OK    получено OK    PASS
+  pc1 -> ping 8.8.8.8 (SNAT)                                     ожидалось OK    получено OK    PASS
+  pc1 -> ping 10.0.2.2 (шлюз VirtualBox NAT, ICMP через SNAT) ожидалось OK    получено OK    PASS
+  pc1 -> 8.8.8.8 tcp/53 (интернет через SNAT)       ожидалось OK    получено OK    PASS
+  pc1 -> DNS: резолв ubuntu.com                            ожидалось OK    получено OK    PASS
+  pc1 -> https://ubuntu.com (интернет)                   ожидалось OK    получено OK    PASS
+--- LAN -> DMZ / gw
+  pc1 -> http://172.16.20.10                                     ожидалось OK    получено OK    PASS
+  pc1 -> http://192.168.56.10 (DNAT + hairpin)                   ожидалось OK    получено OK    PASS
+  pc1 -> ssh dmz-srv (172.16.20.10:22)                           ожидалось OK    получено OK    PASS
+  pc1 -> ping dmz-srv                                            ожидалось OK    получено OK    PASS
+  pc1 -> ssh gw (192.168.10.1:22)                                ожидалось OK    получено OK    PASS
+  pc1 -> dmz-srv tcp/443 (не разрешён)                 ожидалось DENY  получено DENY  PASS
+--- DMZ -> LAN (всё запрещено)
+  контроль: pc2 -> pc1 tcp/8080 (внутри LAN)       ожидалось OK    получено OK    PASS
+  dmz-srv -> ping pc1                                            ожидалось DENY  получено DENY  PASS
+  dmz-srv -> ssh pc1                                             ожидалось DENY  получено DENY  PASS
+  dmz-srv -> pc1 tcp/8080 (слушатель запущен)    ожидалось DENY  получено DENY  PASS
+  dmz-srv -> pc1 tcp/80,443,3389,445                             ожидалось DENY  получено DENY  PASS
+  dmz-srv -> ssh gw (172.16.20.1:22)                             ожидалось DENY  получено DENY  PASS
+  gw: в журнале есть nft-drop: dmz->lan              ожидалось OK    получено OK    PASS
+--- DMZ -> интернет (только DNS/HTTP/HTTPS)
+  dmz-srv -> DNS: резолв archive.ubuntu.com                ожидалось OK    получено OK    PASS
+  dmz-srv -> apt-get update (HTTP/HTTPS)                         ожидалось OK    получено OK    PASS
+  dmz-srv -> https://registry-1.docker.io                        ожидалось OK    получено OK    PASS
+  dmz-srv -> github.com:22 (не разрешён)               ожидалось DENY  получено DENY  PASS
+  dmz-srv -> ping 8.8.8.8 (не разрешён)                ожидалось DENY  получено DENY  PASS
+  dmz-srv -> http://192.168.56.10 (hairpin в DMZ)               ожидалось OK    получено OK    PASS
+  dmz-srv: контейнер nginx unless-stopped, Up           ожидалось OK    получено OK    PASS
+--- WAN (хост Windows и lab-wan) -> внутрь
+  host -> http://192.168.56.10 (DNAT)                            ожидалось OK    получено OK    PASS
+  host -> ssh gw 192.168.56.10 [LAB-EXCEPTION]                   ожидалось OK    получено OK    PASS
+  host -> ssh dmz-srv 172.16.20.10 (WAN -> DMZ)                  ожидалось DENY  получено DENY  PASS
+  wan -> http://192.168.56.10 (DNAT)                             ожидалось OK    получено OK    PASS
+  wan -> ssh dmz-srv 172.16.20.10 (маршрут через gw) ожидалось DENY  получено DENY  PASS
+  wan -> http://172.16.20.10 напрямую, без DNAT       ожидалось DENY  получено DENY  PASS
+  wan -> ssh pc1                                                 ожидалось DENY  получено DENY  PASS
+  wan -> ping pc1                                                ожидалось DENY  получено DENY  PASS
+  wan -> ssh gw (послабление только для 192.168.56.1) ожидалось DENY  получено DENY  PASS
+  wan -> ping gw                                                 ожидалось DENY  получено DENY  PASS
+  wan -> DNS на gw 192.168.56.10:53                            ожидалось DENY  получено DENY  PASS
+
+| # | Проверка | Ожидалось | Получено | Итог |
+|---|---|---|---|---|
+| 1 | gw: nftables.service enabled+active | OK | OK | PASS |
+| 2 | gw: ruleset загружен (policy drop, лог nft-drop:) | OK | OK | PASS |
+| 3 | gw: ip_forward=1 (sysctl.d) | OK | OK | PASS |
+| 4 | gw: rp_filter strict на всех интерфейсах | OK | OK | PASS |
+| 5 | gw: DHCP (dnsmasq) слушает только lan0 | OK | OK | PASS |
+| 6 | pc1: адрес по DHCP из пула .100-.200 | OK | OK | PASS |
+| 7 | pc1: шлюз и DNS получены по DHCP (192.168.10.1) | OK | OK | PASS |
+| 8 | pc1 -> ping 8.8.8.8 (SNAT) | OK | OK | PASS |
+| 9 | pc1 -> ping 10.0.2.2 (шлюз VirtualBox NAT, ICMP через SNAT) | OK | OK | PASS |
+| 10 | pc1 -> 8.8.8.8 tcp/53 (интернет через SNAT) | OK | OK | PASS |
+| 11 | pc1 -> DNS: резолв ubuntu.com | OK | OK | PASS |
+| 12 | pc1 -> https://ubuntu.com (интернет) | OK | OK | PASS |
+| 13 | pc1 -> http://172.16.20.10 | OK | OK | PASS |
+| 14 | pc1 -> http://192.168.56.10 (DNAT + hairpin) | OK | OK | PASS |
+| 15 | pc1 -> ssh dmz-srv (172.16.20.10:22) | OK | OK | PASS |
+| 16 | pc1 -> ping dmz-srv | OK | OK | PASS |
+| 17 | pc1 -> ssh gw (192.168.10.1:22) | OK | OK | PASS |
+| 18 | pc1 -> dmz-srv tcp/443 (не разрешён) | DENY | DENY | PASS |
+| 19 | контроль: pc2 -> pc1 tcp/8080 (внутри LAN) | OK | OK | PASS |
+| 20 | dmz-srv -> ping pc1 | DENY | DENY | PASS |
+| 21 | dmz-srv -> ssh pc1 | DENY | DENY | PASS |
+| 22 | dmz-srv -> pc1 tcp/8080 (слушатель запущен) | DENY | DENY | PASS |
+| 23 | dmz-srv -> pc1 tcp/80,443,3389,445 | DENY | DENY | PASS |
+| 24 | dmz-srv -> ssh gw (172.16.20.1:22) | DENY | DENY | PASS |
+| 25 | gw: в журнале есть nft-drop: dmz->lan | OK | OK | PASS |
+| 26 | dmz-srv -> DNS: резолв archive.ubuntu.com | OK | OK | PASS |
+| 27 | dmz-srv -> apt-get update (HTTP/HTTPS) | OK | OK | PASS |
+| 28 | dmz-srv -> https://registry-1.docker.io | OK | OK | PASS |
+| 29 | dmz-srv -> github.com:22 (не разрешён) | DENY | DENY | PASS |
+| 30 | dmz-srv -> ping 8.8.8.8 (не разрешён) | DENY | DENY | PASS |
+| 31 | dmz-srv -> http://192.168.56.10 (hairpin в DMZ) | OK | OK | PASS |
+| 32 | dmz-srv: контейнер nginx unless-stopped, Up | OK | OK | PASS |
+| 33 | host -> http://192.168.56.10 (DNAT) | OK | OK | PASS |
+| 34 | host -> ssh gw 192.168.56.10 [LAB-EXCEPTION] | OK | OK | PASS |
+| 35 | host -> ssh dmz-srv 172.16.20.10 (WAN -> DMZ) | DENY | DENY | PASS |
+| 36 | wan -> http://192.168.56.10 (DNAT) | OK | OK | PASS |
+| 37 | wan -> ssh dmz-srv 172.16.20.10 (маршрут через gw) | DENY | DENY | PASS |
+| 38 | wan -> http://172.16.20.10 напрямую, без DNAT | DENY | DENY | PASS |
+| 39 | wan -> ssh pc1 | DENY | DENY | PASS |
+| 40 | wan -> ping pc1 | DENY | DENY | PASS |
+| 41 | wan -> ssh gw (послабление только для 192.168.56.1) | DENY | DENY | PASS |
+| 42 | wan -> ping gw | DENY | DENY | PASS |
+| 43 | wan -> DNS на gw 192.168.56.10:53 | DENY | DENY | PASS |
+
+ИТОГ (прогон 1): PASS=43 FAIL=0
+ВСЕ ПРОВЕРКИ ЗЕЛЁНЫЕ
